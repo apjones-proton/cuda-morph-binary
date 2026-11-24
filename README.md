@@ -2,7 +2,7 @@
 
 This library performs morphology operations (dilate, erode, open, close) 
 on binary images already stored in CUDA GPU memory.
-It is efficient even for large dilations because it first packs scanlines into 64 bit words,
+It is fast even for large dilations because it first packs scanlines into 64 bit words,
 1 bit per pixel, and dilates up to 64 pixels simultaneously on every thread
 using fast bit-manipulation operation 
 and updates up to 64 pixels in every write operation. 

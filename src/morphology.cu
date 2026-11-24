@@ -74,6 +74,7 @@ static __global__ void g_decompress_pixels_aligned(uint8_t* output, int w, int a
 	FORALL(i, area8) {
 		int x = 8 * (i % w8), y = i / w8;
 		int j = x + y * w;
+		if (x >= w) continue;
 
 		uint64_t mask = input[i];
 		mask |= mask << 28; // expand 8 bits into 8 bytes with zero or one
@@ -114,7 +115,7 @@ __global__ void g_dilate_compressed(uint64_t* cmprs_out, int area64, int w64, in
 		uint64_t orig = cmprs_in[i];
 		if (x0 == w64-1 && w < 64*w64) {
 			int dw = w - 64*x0;
-			orig &= (1<<dw - 1);
+			orig &= ((1<<dw) - 1);
 		}
 		if (orig == 0) continue;
 		int dymax = nkernel / 2; // assuming nkernel = 1 + 2 * d
@@ -144,7 +145,7 @@ __global__ void g_dilate_compressed(uint64_t* cmprs_out, int area64, int w64, in
 			}
 			{ int x = x0 - dxlft - 1; if (x >= 0 && lft) atomicOr(&cmprs_out[x + y*w64], lft); }
 			for (int x =  x0 - dxlft; x <= x0 + dxrgt; ++x) if (x >= 0 && x < w64) {
-				if (~ctr == 0) cmprs_out[x + y*w64] = ctr;
+				if (~ctr == 0) cmprs_out[x + y*w64] = ctr; // safe because it sets all bits
 				else if (ctr) atomicOr(&cmprs_out[x + y*w64], ctr);
 			}
 			{ int x = x0 + dxrgt + 1; if (x < w64 && rgt) atomicOr(&cmprs_out[x + y*w64], rgt); }
@@ -160,7 +161,7 @@ __global__ void g_erode_compressed(uint64_t* cmprs_out, int area64, int w64, int
 		uint64_t orig = cmprs_in[i];
 		if (x0 == w64-1 && w < 64*w64) {
 			int dw = w - 64*x0;
-			orig |= ~(1<<dw - 1);
+			orig |= ~((1<<dw) - 1);
 		}
 		if (~orig == 0) continue;
 		int dymax = nkernel / 2; // assuming nkernel = 1 + 2 * d
@@ -191,7 +192,7 @@ __global__ void g_erode_compressed(uint64_t* cmprs_out, int area64, int w64, int
 			// note if(~expr) is a short way of expressing 'if not all bits set in expr'
 			{ int x = x0 - dxlft - 1; if (x >= 0 && ~lft) atomicAnd(&cmprs_out[x + y*w64], lft); }
 			for (int x =  x0 - dxlft; x <= x0 + dxrgt; ++x) if (x >= 0 && x < w64) {
-				if (ctr == 0) cmprs_out[x + y*w64] = ctr;
+				if (ctr == 0) cmprs_out[x + y*w64] = ctr; // safe because it zeros all bits
 				else if (~ctr) atomicAnd(&cmprs_out[x + y*w64], ctr);
 			}
 			{ int x = x0 + dxrgt + 1; if (x < w64 && ~rgt) atomicAnd(&cmprs_out[x + y*w64], rgt); }
@@ -212,7 +213,7 @@ void dilate_binary(const uint8_t* input, uint8_t* output, int w, int h, float ra
 	g_fill_circular_kernel<<<GPU(nkernel)>>>(kernel, radius);
 	compress_pixels(cmprs_in, area64, w64, w, input);
 	// dilate mask 64 bits at a time
-	cudaMemset(cmprs_out, area64 * sizeof(uint64_t), 0);
+	cudaMemset(cmprs_out, 0x00, area64 * sizeof(uint64_t));
 	g_dilate_compressed<<<GPU(area64)>>>(cmprs_out, area64, w64, w, h, cmprs_in, nkernel, kernel);
 	decompress_pixels(output, w, area64, w64, cmprs_out, value);
 	if (allocated) { cudaFree(workspace); workspace = nullptr; }
@@ -231,7 +232,7 @@ void erode_binary(const uint8_t* input, uint8_t* output, int w, int h, float rad
 	g_fill_circular_kernel<<<GPU(nkernel)>>>(kernel, radius);
 	compress_pixels(cmprs_in, area64, w64, w, input);
 	// erode mask 64 bits at a time
-	cudaMemset(cmprs_out, area64 * sizeof(uint64_t), 0xFF);
+	cudaMemset(cmprs_out, 0xFF, area64 * sizeof(uint64_t));
 	g_erode_compressed<<<GPU(area64)>>>(cmprs_out, area64, w64, w, h, cmprs_in, nkernel, kernel);
 	decompress_pixels(output, w, area64, w64, cmprs_out, value);
 	if (allocated) { cudaFree(workspace); workspace = nullptr; }
@@ -250,10 +251,10 @@ void close_binary(const uint8_t* input, uint8_t* output, int w, int h, float rad
 	g_fill_circular_kernel<<<GPU(nkernel)>>>(kernel, radius);
 	compress_pixels(cmprs_1, area64, w64, w, input);
 	// dilate mask 64 bits at a time
-	cudaMemset(cmprs_2, area64 * sizeof(uint64_t), 0);
+	cudaMemset(cmprs_2, 0x00, area64 * sizeof(uint64_t));
 	g_dilate_compressed<<<GPU(area64)>>>(cmprs_2, area64, w64, w, h, cmprs_1, nkernel, kernel);
 	// erode mask 64 bits at a time
-	cudaMemset(cmprs_1, area64 * sizeof(uint64_t), 0xFF);
+	cudaMemset(cmprs_1, 0xFF, area64 * sizeof(uint64_t));
 	g_erode_compressed<<<GPU(area64)>>>(cmprs_1, area64, w64, w, h, cmprs_2, nkernel, kernel);
 	// decompress mask 8 bits at a time (expand 8 bits to 64 bits padded with zeros)
 	decompress_pixels(output, w, area64, w64, cmprs_1, value);
