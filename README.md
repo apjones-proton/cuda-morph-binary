@@ -36,7 +36,7 @@ It could be given a similar optimization as the cpu function to give it a
 theoretical asymptotic scaling of $O(L^3)$ but at these image sizes the cost 
 would be greater than the benefit.
 
-![Description](images/scaling.png)
+![](images/scaling.png)
 
     scale/px   this/us     nppi/us      cpu/us
          100        21          10          60
@@ -55,3 +55,24 @@ would be greater than the benefit.
        16000     91925   223583269    19656906
        24000    299316           -    64016885
        36000    940711           -   209561028
+
+## How to Build & Run
+To build just the library:
+```bash
+cmake -B build
+cmake --build build
+```
+To build and runtests/benchmarks:
+```bash
+cmake -B build -DCUDA_MORPHOLOGY_BUILD_TESTS=ON
+cmake --build build
+build/testing/tests
+build/testing/benchmark
+```
+
+## Citation / Reference
+If you use this in research, please cite:
+```
+Andrew Jones, "Efficient Morphology Operations for Binary CUDA Images", 2026.
+GitHub: https://github.com/apjones-proton/cuda-morph-binary
+```
