@@ -12,26 +12,46 @@ I have included some basic tests and benchmarks against a small selection of art
 cases. 
 
 The tests compare for pixel-perfect agreement with simple 
-'obviously correct' cpu implementation as a reference 
-(although I optimized it so that I could run larger sizes to confirm they are 
-correct so it is not the simplest possible and thus less obviously 
-correct than it could be). 
+'obviously correct' cpu implementation as a reference.
 
-The benchmarks compare against that CPU version and against NVIDIA Performance 
-Primitives 8-bit dilation because there is no 1-bit dilation and this is the best 
-NPP option available. This library is orders of magnitude faster than both in most cases.
-The NPP function struggles with these large dilations, mostly performing even worse 
-than a single cpu, probably because it does not skip any pixels, 
-and that is because it is 8-bit not 1-bit (in 1-bit images many 
-values are extremal and thus can be inferred to have no effect, but in generic 8-bit 
-images few pixels can be expected to afford such an optimization, and so it is not
-attempted). 
+The benchmarks compare against that CPU version and against NVIDIA Performance
+Primitives 8-bit dilation because there is no 1-bit dilation and this is the best
+NPP option available. This library is orders of magnitude faster than both for all
+but the smallest scales.
+Let $L$ be the length scale of an image in pixels.
 
-                this      nppi       cpu   description
-    case_5        49       722        63   127x127, 1 px set, 47 px dilation
-    case_2        36      1934      3614   1024x1024, 3 px set, 10 px dilation
-    case_4       274    356468     37950   3333x3333, 5 px set, 47 px dilation
-    case_1       628   2635305     59214   4096x4096, 3 px set, 100 px dilation
-    case_3       640    355224    135669   3333x3333, 5 large regions set, 47 px dilation
+The NPP function scales like $O(L^4)$ because the image area scales
+like $O(L^2)$ and the kernel area also scales like $O(L^2)$.
 
-TODO: systematic study of scaling with size of image, number and distribution of pixels initially set, dilation radius, and more.
+The cpu function scales like $O(L^3)$ because,
+although the area scales like $O(L^2)$,
+it was built with an optimization that only applies the kernel to
+edge pixels, resulting in a scaling of $O(L)$.
+This is multiplied by a kernel area scaling of $O(L^2)$.
+
+The new library itself should theoretically have an asymptotic scaling
+of $O(L^4)$ (for the same reasons as the NPP function) 
+but at these image sizes it scales more like $O(L^3)$.
+It could be given a similar optimization as the cpu function to give it a
+theoretical asymptotic scaling of $O(L^3)$ but at these image sizes the cost 
+would be greater than the benefit.
+
+![Description](images/scaling.png)
+
+    scale/px   this/us     nppi/us      cpu/us
+         100        21          10          60
+         150        23          27         132
+         222        26          28         313
+         357        32         122         820
+         600        58        1521        2621
+         800        66        3897        5440
+        1200       127       15576       14537
+        2000       492       97956       56157
+        3000      1119      325921      172246
+        4000      1483      908725      388570
+        6000      2506     4433405     1192215
+        9000      7717    22365172     3622236
+       12000     33792    70418324     8650837
+       16000     91925   223583269    19656906
+       24000    299316           -    64016885
+       36000    940711           -   209561028

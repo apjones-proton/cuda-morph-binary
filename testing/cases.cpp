@@ -73,10 +73,10 @@ Case case_2()
 Case case_3()
 {
 	auto cs = empty(3333, 3333, 47.0f);
-	set_circle(cs, 3300, 15, 300);
+	set_circle(cs, 3300, 1015, 300);
 	set_circle(cs, 30, 0, 300);
 	set_circle(cs, 3300, 3200, 300);
-	set_circle(cs, 45, 3200, 300);
+	set_circle(cs, 45, 2200, 300);
 	set_diamond(cs, 1000, 1000, 500);
 	cs.name = __FUNCTION__;
 	return cs;
@@ -102,7 +102,48 @@ Case case_5()
 	return cs;
 }
 
+Case case_scaled(float scale)
+{
+	auto cs = empty(int(scale), int(scale), 0.015f*scale);
+	set_circle(cs,  int(0.99f*scale),  int(0.29f*scale), int(0.12f*scale));
+	set_circle(cs,  int(0.01f*scale),  int(0.0f*scale),  int(0.10f*scale));
+	set_circle(cs,  int(0.98f*scale),  int(0.96f*scale), int(0.13f*scale));
+	set_circle(cs,  int(0.025f*scale), int(0.7f*scale),  int(0.14f*scale));
+	set_diamond(cs,  int(0.3f*scale),  int(0.3f*scale),  int(0.2f*scale));
+	cs.name = std::string(__FUNCTION__) + " " + std::to_string(int(scale));
+	return cs;
+}
+
+
 std::vector<std::function<Case()>> all_cases()
 {
 	return { case_1, case_2, case_3, case_4, case_5 };
+}
+
+std::vector<std::function<Case()>> scale_cases()
+{
+	return {
+			[]() { return case_scaled(100); },
+			[]() { return case_scaled(150); },
+			[]() { return case_scaled(222); },
+			[]() { return case_scaled(357); },
+			[]() { return case_scaled(600); },
+			[]() { return case_scaled(800); },
+			[]() { return case_scaled(1200); },
+			[]() { return case_scaled(2000); },
+			[]() { return case_scaled(3000); },
+			[]() { return case_scaled(4000); },
+			[]() { return case_scaled(6000); },
+			[]() { return case_scaled(9000); },
+			[]() { return case_scaled(12000); },
+			[]() { return case_scaled(16000); },
+	};
+}
+
+std::vector<std::function<Case()>> scale_cases_2()
+{
+	return {
+			[]() { return case_scaled(24000); },
+			[]() { return case_scaled(36000); },
+	};
 }

@@ -14,9 +14,7 @@ struct Case {
 	std::string name;
 };
 
-Case case_1();
-Case case_2();
-Case case_3();
-Case case_4();
-
 std::vector<std::function<Case()>> all_cases();
+
+std::vector<std::function<Case()>> scale_cases();
+std::vector<std::function<Case()>> scale_cases_2();

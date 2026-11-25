@@ -128,11 +128,17 @@ int main(int argc, char** argv)
 	std::cout << std::right;
 	std::cout << std::setw(10) << "" << std::setw(10) << "this" << std::setw(10) << "nppi" << std::setw(10) << "cpu" << std::endl;
 	std::cout << std::right;
-	for (auto& csfunc : all_cases()) {
+	for (auto& csfunc : scale_cases()) {
 		auto cs = csfunc();
 		auto t1 = time_us_thislibrary(cs);
 		auto t2 = time_us_nppi(cs);
-		auto t3 = time_us_cpu_morphology(cs, 10 * 1e6);
+		auto t3 = time_us_cpu_morphology(cs, 0);
 		std::cout << std::setw(10) << cs.name << std::setw(10) << t1 << std::setw(10) << t2 << std::setw(10) << t3 << std::endl;
+	}
+	for (auto& csfunc : scale_cases_2()) {
+		auto cs = csfunc();
+		auto t1 = time_us_thislibrary(cs);
+		auto t3 = time_us_cpu_morphology(cs, 0);
+		std::cout << std::setw(10) << cs.name << std::setw(10) << t1 << std::setw(10) << "-" << std::setw(10) << t3 << std::endl;
 	}
 }
