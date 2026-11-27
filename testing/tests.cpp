@@ -37,7 +37,7 @@ bool test_correctness(const Case& cs)
 			if (output[i] != cpu_output[i]) {
 				printf("different at pixel (%d,%d) %d != %d\n", x, y, output[i], cpu_output[i]);
 				result = false;
-				//goto breakbreak;
+				goto breakbreak;
 			}
 		}
 	}

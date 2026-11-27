@@ -118,6 +118,8 @@ __global__ void g_dilate_compressed(uint64_t* cmprs_out, int area64, int w64, in
 			orig &= ((1<<dw) - 1);
 		}
 		if (orig == 0) continue;
+		if (~orig == 0 && (x0==0 || (cmprs_in[i-1]>>63) & 1) && (x0==w64-1 || (cmprs_in[i+1]>>0) & 1)
+			&& (y0==0 || ~cmprs_in[i-w64] == 0) && (y0==h-1 || ~cmprs_in[i+w64] == 0)) continue;
 		int dymax = nkernel / 2; // assuming nkernel = 1 + 2 * d
 		int y    = max(y0 - dymax, 0);
 		int ymax = min(y0 + dymax, h-1);
@@ -164,6 +166,8 @@ __global__ void g_erode_compressed(uint64_t* cmprs_out, int area64, int w64, int
 			orig |= ~((1<<dw) - 1);
 		}
 		if (~orig == 0) continue;
+		if (orig == 0 && (x0==0 || !(cmprs_in[i-1]>>63) & 1) && (x0==w64-1 || !(cmprs_in[i+1]>>0) & 1)
+			&& (y0==0 || cmprs_in[i-w64] == 0) && (y0==h-1 || cmprs_in[i+w64] == 0)) continue;
 		int dymax = nkernel / 2; // assuming nkernel = 1 + 2 * d
 		int y    = max(y0 - dymax, 0);
 		int ymax = min(y0 + dymax, h-1);
@@ -213,7 +217,7 @@ void dilate_binary(const uint8_t* input, uint8_t* output, int w, int h, float ra
 	g_fill_circular_kernel<<<GPU(nkernel)>>>(kernel, radius);
 	compress_pixels(cmprs_in, area64, w64, w, input);
 	// dilate mask 64 bits at a time
-	cudaMemset(cmprs_out, 0x00, area64 * sizeof(uint64_t));
+	cudaMemcpy(cmprs_out, cmprs_in, area64 * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
 	g_dilate_compressed<<<GPU(area64)>>>(cmprs_out, area64, w64, w, h, cmprs_in, nkernel, kernel);
 	decompress_pixels(output, w, area64, w64, cmprs_out, value);
 	if (allocated) { cudaFree(workspace); workspace = nullptr; }
@@ -232,7 +236,7 @@ void erode_binary(const uint8_t* input, uint8_t* output, int w, int h, float rad
 	g_fill_circular_kernel<<<GPU(nkernel)>>>(kernel, radius);
 	compress_pixels(cmprs_in, area64, w64, w, input);
 	// erode mask 64 bits at a time
-	cudaMemset(cmprs_out, 0xFF, area64 * sizeof(uint64_t));
+	cudaMemcpy(cmprs_out, cmprs_in, area64 * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
 	g_erode_compressed<<<GPU(area64)>>>(cmprs_out, area64, w64, w, h, cmprs_in, nkernel, kernel);
 	decompress_pixels(output, w, area64, w64, cmprs_out, value);
 	if (allocated) { cudaFree(workspace); workspace = nullptr; }
@@ -251,10 +255,10 @@ void close_binary(const uint8_t* input, uint8_t* output, int w, int h, float rad
 	g_fill_circular_kernel<<<GPU(nkernel)>>>(kernel, radius);
 	compress_pixels(cmprs_1, area64, w64, w, input);
 	// dilate mask 64 bits at a time
-	cudaMemset(cmprs_2, 0x00, area64 * sizeof(uint64_t));
+	cudaMemcpy(cmprs_2, cmprs_1, area64 * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
 	g_dilate_compressed<<<GPU(area64)>>>(cmprs_2, area64, w64, w, h, cmprs_1, nkernel, kernel);
 	// erode mask 64 bits at a time
-	cudaMemset(cmprs_1, 0xFF, area64 * sizeof(uint64_t));
+	cudaMemcpy(cmprs_1, cmprs_2, area64 * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
 	g_erode_compressed<<<GPU(area64)>>>(cmprs_1, area64, w64, w, h, cmprs_2, nkernel, kernel);
 	// decompress mask 8 bits at a time (expand 8 bits to 64 bits padded with zeros)
 	decompress_pixels(output, w, area64, w64, cmprs_1, value);
@@ -274,10 +278,10 @@ void open_binary(const uint8_t* input, uint8_t* output, int w, int h, float radi
 	g_fill_circular_kernel<<<GPU(nkernel)>>>(kernel, radius);
 	compress_pixels(cmprs_1, area64, w64, w, input);
 	// erode mask 64 bits at a time
-	cudaMemset(cmprs_2, area64 * sizeof(uint64_t), 0xFF);
+	cudaMemcpy(cmprs_2, cmprs_1, area64 * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
 	g_erode_compressed<<<GPU(area64)>>>(cmprs_2, area64, w64, w, h, cmprs_1, nkernel, kernel);
 	// dilate mask 64 bits at a time
-	cudaMemset(cmprs_1, area64 * sizeof(uint64_t), 0);
+	cudaMemcpy(cmprs_1, cmprs_2, area64 * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
 	g_dilate_compressed<<<GPU(area64)>>>(cmprs_1, area64, w64, w, h, cmprs_2, nkernel, kernel);
 	// decompress mask 8 bits at a time (expand 8 bits to 64 bits padded with zeros)
 	decompress_pixels(output, w, area64, w64, cmprs_1, value);

@@ -29,12 +29,9 @@ it was built with an optimization that only applies the kernel to
 edge pixels, resulting in a scaling of $O(L)$.
 This is multiplied by a kernel area scaling of $O(L^2)$.
 
-The new library itself should theoretically have an asymptotic scaling
-of $O(L^4)$ (for the same reasons as the NPP function) 
-but at these image sizes it scales more like $O(L^3)$.
-It could be given a similar optimization as the cpu function to give it a
-theoretical asymptotic scaling of $O(L^3)$ but at these image sizes the cost 
-would be greater than the benefit.
+The new library itself should theoretically have a large-$L$ scaling
+of $O(L^3)$ (for the same reasons as the cpu function)
+but at these image sizes it also scales like $O(L^3)$.
 
 ![](images/scaling.png)
 
